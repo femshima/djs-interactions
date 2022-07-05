@@ -25,5 +25,8 @@
     "lint-staged": "lint-staged",
     "start": "node dist/index.js",
     "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "discord.js": "^13.8.1"
   }
 }
