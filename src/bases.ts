@@ -11,6 +11,9 @@ import {
   SelectMenuInteraction,
   Modal as DiscordModal,
   ModalOptions,
+  ChatInputApplicationCommandData,
+  UserApplicationCommandData,
+  MessageApplicationCommandData,
 } from 'discord.js';
 
 export abstract class InteractionBase<
@@ -22,13 +25,13 @@ export abstract class InteractionBase<
 }
 
 export abstract class Command extends InteractionBase<
-  ApplicationCommandData & { type: 'CHAT_INPUT' },
+  ChatInputApplicationCommandData,
   CommandInteraction<'cached'>
 > {
   autocomplete?(interaction: AutocompleteInteraction): void | Promise<void>;
 }
 export abstract class ContextMenu extends InteractionBase<
-  ApplicationCommandData & { type: 'USER' | 'MESSAGE' },
+  UserApplicationCommandData | MessageApplicationCommandData,
   ContextMenuInteraction<'cached'>
 > {}
 
