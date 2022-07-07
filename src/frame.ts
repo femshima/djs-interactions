@@ -1,4 +1,4 @@
-import { Client, Interaction, Snowflake } from 'discord.js';
+import { Client, GuildResolvable, Interaction } from 'discord.js';
 import {
   ApplicationCommandInteractionType,
   ApplicationCommandBase,
@@ -62,18 +62,25 @@ export default class InteractionFrame {
   }
   async registerCommand(
     client: Client<true>,
-    guildId: undefined | Snowflake,
-    commands: ApplicationCommandBase<keyof ApplicationCommandInteractionType>[]
+    commands: ApplicationCommandBase<keyof ApplicationCommandInteractionType>[],
+    guilds?: GuildResolvable[]
   ) {
     commands.forEach((command) => {
       const def = command.definition;
-      if (typeof def.type !== 'string') return;
-      this.commands.set(def.type, def.name, command);
+      const type = def.type ?? 'CHAT_INPUT';
+      this.commands.set(type, def.name, command);
     });
 
     const defs = this.commands.map((_k1, _k2, command) => command.definition);
-    if (guildId) await client.application?.commands.set(defs, guildId);
-    else await client.application?.commands.set(defs);
+    if (guilds) {
+      for (const guild of guilds) {
+        const guildId = client.guilds.resolveId(guild);
+        if (!guildId) continue;
+        await client.application?.commands.set(defs, guildId);
+      }
+    } else {
+      await client.application?.commands.set(defs);
+    }
   }
   baseComponent<T extends keyof ComponentTypes>(base: T) {
     const components = this.components;

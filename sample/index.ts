@@ -14,9 +14,17 @@ client.on('interactionCreate', (interaction) =>
 );
 
 client.login(BOT_TOKEN).then(async () => {
-  interactionFrame.registerCommand(
-    client,
-    undefined,
-    Object.values(Command).map((c) => new c())
-  );
+  if (!env.production) {
+    await interactionFrame.registerCommand(
+      client,
+      Object.values(Command).map((c) => new c())
+    );
+  } else {
+    await interactionFrame.registerCommand(
+      client,
+      Object.values(Command).map((c) => new c()),
+      (await client.guilds.fetch()).map((v) => v.id)
+    );
+  }
+  console.log('Command initialized!');
 });
