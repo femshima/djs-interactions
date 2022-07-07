@@ -1,13 +1,9 @@
-import {
-  ChatInputApplicationCommandData,
-  CommandInteraction,
-} from 'discord.js';
+import { CommandInteraction } from 'discord.js';
 import { ApplicationCommandBase } from '../../src';
 import { More } from '../component';
 
-export default class Ping extends ApplicationCommandBase<'CHAT_INPUT'> {
-  definition: ChatInputApplicationCommandData & { type: 'CHAT_INPUT' } = {
-    type: 'CHAT_INPUT',
+export default class Ping extends ApplicationCommandBase {
+  definition = {
     name: 'ping',
     description: 'Ping!',
   };

@@ -18,9 +18,11 @@ export interface ApplicationCommandInteractionType {
 }
 
 export abstract class ApplicationCommandBase<
-  T extends keyof ApplicationCommandInteractionType
+  T extends keyof ApplicationCommandInteractionType = 'CHAT_INPUT'
 > {
-  abstract definition: ApplicationCommandData & { type: T };
+  abstract definition: T extends 'CHAT_INPUT'
+    ? ApplicationCommandData & { type?: T }
+    : ApplicationCommandData & { type: T };
   abstract handle(
     interaction: ApplicationCommandInteractionType[T]
   ): Promise<void>;
