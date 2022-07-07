@@ -88,17 +88,14 @@ export default class InteractionFrame {
         this.customId = crypto.randomUUID() + (this.customId ?? '');
         components.set(base, this.customId, this);
       }
-      async handle(
+      async handle?(
         interaction: ComponentTypes[T]['interaction']
-      ): Promise<void> {
-        return;
-      }
+      ): Promise<void>;
     }
-    interface K {
+    return WithHandler as {
       new (
         ...args: ConstructorParameters<ComponentTypes[T]['base']>
       ): WithHandler & InstanceType<ComponentTypes[T]['base']>;
-    }
-    return WithHandler as K;
+    };
   }
 }

@@ -54,5 +54,5 @@ export type ComponentTypes = typeof ComponentBases & {
 
 export interface WithHandlerClassType<T extends keyof ComponentTypes> {
   customId: string;
-  handle(interaction: ComponentTypes[T]['interaction']): Promise<void>;
+  handle?(interaction: ComponentTypes[T]['interaction']): Promise<void>;
 }
