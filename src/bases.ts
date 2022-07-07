@@ -1,49 +1,56 @@
 import {
-  ApplicationCommandData,
-  AutocompleteInteraction,
   ButtonInteraction,
-  CommandInteraction,
-  ContextMenuInteraction,
-  Interaction,
+  SelectMenuInteraction,
   MessageButton,
   MessageSelectMenu,
+  Modal,
   ModalSubmitInteraction,
-  SelectMenuInteraction,
-  Modal as DiscordModal,
-  ModalOptions,
-  ChatInputApplicationCommandData,
-  UserApplicationCommandData,
-  MessageApplicationCommandData,
+  ApplicationCommandData,
+  CommandInteraction,
+  MessageContextMenuInteraction,
+  UserContextMenuInteraction,
 } from 'discord.js';
 
-export abstract class InteractionBase<
-  DefinitionType,
-  InteractionType extends Interaction
-> {
-  abstract get definition(): DefinitionType;
-  abstract handle(interaction: InteractionType): void | Promise<void>;
+export interface ApplicationCommandInteractionType {
+  CHAT_INPUT: CommandInteraction<'cached'>;
+  MESSAGE: MessageContextMenuInteraction<'cached'>;
+  USER: UserContextMenuInteraction<'cached'>;
 }
 
-export abstract class Command extends InteractionBase<
-  ChatInputApplicationCommandData,
-  CommandInteraction<'cached'>
+export abstract class ApplicationCommandBase<
+  T extends keyof ApplicationCommandInteractionType
 > {
-  autocomplete?(interaction: AutocompleteInteraction): void | Promise<void>;
+  abstract definition: ApplicationCommandData & { type: T };
+  abstract handle(
+    interaction: ApplicationCommandInteractionType[T]
+  ): Promise<void>;
 }
-export abstract class ContextMenu extends InteractionBase<
-  UserApplicationCommandData | MessageApplicationCommandData,
-  ContextMenuInteraction<'cached'>
-> {}
 
-export abstract class Button extends InteractionBase<
-  MessageButton & { customId: string },
-  ButtonInteraction<'cached'>
-> {}
-export abstract class SelectMenu extends InteractionBase<
-  MessageSelectMenu & { customId: string },
-  SelectMenuInteraction<'cached'>
-> {}
-export abstract class Modal extends InteractionBase<
-  (DiscordModal | ModalOptions) & { customId: string },
-  ModalSubmitInteraction<'cached'>
-> {}
+export const ComponentBases = {
+  BUTTON: {
+    base: MessageButton,
+  },
+  SELECT_MENU: {
+    base: MessageSelectMenu,
+  },
+  MODAL: {
+    base: Modal,
+  },
+};
+
+export type ComponentTypes = typeof ComponentBases & {
+  BUTTON: {
+    interaction: ButtonInteraction<'cached'>;
+  };
+  SELECT_MENU: {
+    interaction: SelectMenuInteraction<'cached'>;
+  };
+  MODAL: {
+    interaction: ModalSubmitInteraction<'cached'>;
+  };
+};
+
+export interface WithHandlerClassType<T extends keyof ComponentTypes> {
+  customId: string;
+  handle(interaction: ComponentTypes[T]['interaction']): Promise<void>;
+}

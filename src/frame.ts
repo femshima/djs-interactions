@@ -1,65 +1,104 @@
-import { Client, Collection, Interaction, Snowflake } from 'discord.js';
-import { Button, Command, SelectMenu, Modal, ContextMenu } from './bases';
+import { Client, Interaction, Snowflake } from 'discord.js';
+import {
+  ApplicationCommandInteractionType,
+  ApplicationCommandBase,
+  ComponentBases,
+  ComponentTypes,
+  WithHandlerClassType,
+} from './bases';
+import crypto from 'crypto';
+import { DataStore, DefaultDataStore } from './store';
 
 export default class InteractionFrame {
-  private commands: Collection<string, Command> = new Collection();
-  private contextmenus: Collection<string, ContextMenu> = new Collection();
-  private buttons: Collection<string, Button> = new Collection();
-  private selectmenus: Collection<string, SelectMenu> = new Collection();
-  private modals: Collection<string, Modal> = new Collection();
-  constructor(public client: Client) {
-    client.on('interactionCreate', this.interaction.bind(this));
-  }
-  private async interaction(interaction: Interaction) {
+  constructor(
+    private commands: DataStore<
+      keyof ApplicationCommandInteractionType,
+      string,
+      ApplicationCommandBase<keyof ApplicationCommandInteractionType>
+    > = new DefaultDataStore(),
+    private components: DataStore<
+      keyof ComponentTypes,
+      string,
+      WithHandlerClassType<keyof ComponentTypes>
+    > = new DefaultDataStore()
+  ) {}
+  async interactionCreate(interaction: Interaction) {
     if (!interaction.inCachedGuild()) return;
-    if (interaction.isCommand()) {
-      await this.commands.get(interaction.commandName)?.handle(interaction);
-    } else if (interaction.isAutocomplete()) {
-      const cmd = this.commands.get(interaction.commandName);
-      if (typeof cmd?.autocomplete === 'function') {
-        await cmd.autocomplete(interaction);
-      }
-    } else if (interaction.isButton()) {
-      await this.buttons.get(interaction.customId)?.handle(interaction);
-    } else if (interaction.isSelectMenu()) {
-      await this.selectmenus.get(interaction.customId)?.handle(interaction);
-    } else if (interaction.isModalSubmit()) {
-      await this.modals.get(interaction.customId)?.handle(interaction);
-    } else if (interaction.isContextMenu()) {
-      await this.contextmenus.get(interaction.commandName)?.handle(interaction);
-    }
+
+    const callCommandHandler = <
+      T extends keyof ApplicationCommandInteractionType
+    >(
+      type: T,
+      interaction: ApplicationCommandInteractionType[T]
+    ) => {
+      const command = this.commands.get(type, interaction.commandName);
+      if (!command?.handle) return;
+      return command.handle(interaction);
+    };
+
+    const callComponentHandler = <T extends keyof ComponentTypes>(
+      type: T,
+      interaction: ComponentTypes[T]['interaction']
+    ) => {
+      if (!interaction.customId) return;
+      const component = this.components.get(type, interaction.customId);
+      if (!component?.handle) return;
+      return component.handle(interaction);
+    };
+
+    if (interaction.isCommand())
+      await callCommandHandler('CHAT_INPUT', interaction);
+    else if (interaction.isMessageContextMenu())
+      await callCommandHandler('MESSAGE', interaction);
+    else if (interaction.isUserContextMenu())
+      await callCommandHandler('USER', interaction);
+
+    if (interaction.isButton())
+      await callComponentHandler('BUTTON', interaction);
+    else if (interaction.isSelectMenu())
+      await callComponentHandler('SELECT_MENU', interaction);
+    else if (interaction.isModalSubmit())
+      await callComponentHandler('MODAL', interaction);
   }
   async registerCommand(
+    client: Client<true>,
     guildId: undefined | Snowflake,
-    ...commands: (Command | ContextMenu)[]
+    commands: ApplicationCommandBase<keyof ApplicationCommandInteractionType>[]
   ) {
     commands.forEach((command) => {
-      if (command instanceof Command) {
-        this.commands.set(command.definition.name, command);
-      } else if (command instanceof ContextMenu) {
-        this.contextmenus.set(command.definition.name, command);
-      }
+      const def = command.definition;
+      if (typeof def.type !== 'string') return;
+      this.commands.set(def.type, def.name, command);
     });
-    if (guildId) {
-      await this.client.application?.commands.set(
-        this.commands.map((command) => command.definition),
-        guildId
-      );
-    } else {
-      await this.client.application?.commands.set(
-        this.commands.map((command) => command.definition)
-      );
-    }
+
+    const defs = this.commands.map((_k1, _k2, command) => command.definition);
+    if (guildId) await client.application?.commands.set(defs, guildId);
+    else await client.application?.commands.set(defs);
   }
-  registerComponent(...components: (Button | SelectMenu | Modal)[]) {
-    components.forEach((component) => {
-      if (component instanceof Button)
-        this.buttons.set(component.definition.customId, component);
-      else if (component instanceof SelectMenu)
-        this.selectmenus.set(component.definition.customId, component);
-      else if (component instanceof Modal)
-        this.modals.set(component.definition.customId, component);
-    });
-    return components.map((component) => component.definition);
+  baseComponent<T extends keyof ComponentTypes>(base: T) {
+    const components = this.components;
+    class WithHandler
+      extends ComponentBases[base].base
+      implements WithHandlerClassType<T>
+    {
+      customId = '';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      constructor(...args: any[]) {
+        super(...args);
+        this.customId = crypto.randomUUID() + (this.customId ?? '');
+        components.set(base, this.customId, this);
+      }
+      async handle(
+        interaction: ComponentTypes[T]['interaction']
+      ): Promise<void> {
+        return;
+      }
+    }
+    interface K {
+      new (
+        ...args: ConstructorParameters<ComponentTypes[T]['base']>
+      ): WithHandler & InstanceType<ComponentTypes[T]['base']>;
+    }
+    return WithHandler as K;
   }
 }
