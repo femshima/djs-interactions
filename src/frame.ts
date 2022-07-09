@@ -10,18 +10,31 @@ import crypto from 'crypto';
 import { DataStore, DefaultDataStore } from './store';
 
 export default class InteractionFrame {
-  constructor(
-    private commands: DataStore<
+  private commands: DataStore<
+    keyof ApplicationCommandInteractionType,
+    string,
+    ApplicationCommandBase<keyof ApplicationCommandInteractionType>
+  >;
+  private components: DataStore<
+    keyof ComponentTypes,
+    string,
+    WithHandlerClassType<keyof ComponentTypes>
+  >;
+  constructor(options?: {
+    commands?: DataStore<
       keyof ApplicationCommandInteractionType,
       string,
       ApplicationCommandBase<keyof ApplicationCommandInteractionType>
-    > = new DefaultDataStore(),
-    private components: DataStore<
+    >;
+    components?: DataStore<
       keyof ComponentTypes,
       string,
       WithHandlerClassType<keyof ComponentTypes>
-    > = new DefaultDataStore()
-  ) {}
+    >;
+  }) {
+    this.commands = options?.commands ?? new DefaultDataStore();
+    this.components = options?.components ?? new DefaultDataStore();
+  }
   async interactionCreate(interaction: Interaction) {
     if (!interaction.inCachedGuild()) return;
 
