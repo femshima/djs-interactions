@@ -1,8 +1,8 @@
 import { CommandInteraction } from 'discord.js';
+import { Command } from '../../src';
 import { MyModal } from '../component';
-import { interactionFrame } from '../interaction';
 
-export default class Ping extends interactionFrame.Base('CHAT_INPUT') {
+export default class Ping extends Command {
   definition = {
     name: 'showmodal',
     description: 'Shows Modal',

@@ -1,8 +1,12 @@
+export { DelayedDataStore } from './delay';
+export { DataStoreAdapter } from './adapter';
+
 export interface DataStore<K, V> {
   getUniqueKey(): K;
   set(key: K, value: V): void | Promise<void>;
   get(key: K): V | undefined | Promise<V | undefined>;
   values(): V[] | Promise<V[]>;
+  entries(): [K, V][] | Promise<[K, V][]>;
 }
 
 export class DefaultDataStore<V> implements DataStore<string, V> {
@@ -14,10 +18,13 @@ export class DefaultDataStore<V> implements DataStore<string, V> {
   set(key: string, value: V) {
     this.store.set(key, value);
   }
-  get(key: string): V | undefined {
+  get(key: string) {
     return this.store.get(key);
   }
-  values(): V[] {
+  values() {
     return Array.from(this.store.values());
+  }
+  entries() {
+    return Array.from(this.store.entries());
   }
 }

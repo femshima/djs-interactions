@@ -1,7 +1,7 @@
 import { Client, Intents } from 'discord.js';
 import env from './env';
 import * as Command from './command';
-import { interactionFrame } from './interaction';
+import { frame } from '../src';
 
 const { BOT_TOKEN } = env;
 
@@ -10,21 +10,14 @@ const client = new Client({
 });
 
 client.on('interactionCreate', (interaction) =>
-  interactionFrame.interactionCreate(interaction)
+  frame.interactionCreate(interaction)
 );
 
 client.login(BOT_TOKEN).then(async () => {
-  if (!env.production) {
-    await interactionFrame.registerCommand(
-      client,
-      Object.values(Command).map((c) => new c())
-    );
-  } else {
-    await interactionFrame.registerCommand(
-      client,
-      Object.values(Command).map((c) => new c()),
-      (await client.guilds.fetch()).map((v) => v.id)
-    );
-  }
+  await frame.registerCommand({
+    client,
+    commands: Object.values(Command).map((c) => new c()),
+    guilds: !env.production,
+  });
   console.log('Command initialized!');
 });

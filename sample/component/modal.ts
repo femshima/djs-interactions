@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from 'discord.js';
-import { interactionFrame } from '../interaction';
+import { Modal } from '../../src';
 
-export default class MyModal extends interactionFrame.Base('MODAL') {
+export default class MyModal extends Modal {
   constructor() {
     super({
       customId: 'modal',

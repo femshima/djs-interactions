@@ -37,11 +37,18 @@ export default class InteractionFrame {
     if (!value) return;
     await CallIfMatches(value, interaction);
   }
-  async registerCommand(
-    client: Client<true>,
-    commands: ApplicationCommandBase<typeof Commands[number]>[],
-    guilds?: GuildResolvable[]
-  ) {
+
+  async registerCommand(options: {
+    client: Client<true>;
+    commands: ApplicationCommandBase<typeof Commands[number]>[];
+    guilds?: boolean | GuildResolvable[];
+  }) {
+    const { client, commands } = options;
+    const guilds =
+      options.guilds === true
+        ? (await client.guilds.fetch()).map((v) => v.id)
+        : options.guilds;
+
     await Promise.all(
       commands.map((command) => {
         return this.store.set(command.definition.name, command);
