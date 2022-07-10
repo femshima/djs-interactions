@@ -8,11 +8,13 @@ import {
   CommandInteraction,
   MessageContextMenuInteraction,
   UserContextMenuInteraction,
-  ChatInputApplicationCommandData,
-  UserApplicationCommandData,
-  MessageApplicationCommandData,
+  Interaction,
 } from 'discord.js';
-import { DataStore } from './store';
+import { ApplicationCommandBase } from './ApplicationCommand';
+import { WithHandlerClassType } from './Components';
+
+export * from './ApplicationCommand';
+export * from './Components';
 
 export const Commands = ['CHAT_INPUT', 'MESSAGE', 'USER'] as const;
 export const Components = ['BUTTON', 'SELECT_MENU', 'MODAL'] as const;
@@ -22,25 +24,6 @@ export function isCommand(arg: unknown): arg is typeof Commands[number] {
 }
 export function isComponent(arg: unknown): arg is typeof Components[number] {
   return Components.includes(arg as typeof Components[number]);
-}
-
-export const register = Symbol();
-export abstract class ApplicationCommandBase<
-  T extends typeof Commands[number] = 'CHAT_INPUT'
-> {
-  abstract definition: T extends 'CHAT_INPUT'
-    ? ChatInputApplicationCommandData
-    : MessageApplicationCommandData | UserApplicationCommandData;
-  abstract handle(interaction: InteractionTypes[T]): Promise<void>;
-  [register](store: DataStore<keyof InteractionTypes, string, DataTypes>) {
-    const type: T = (this.definition.type ?? 'CHAT_INPUT') as T;
-    store.set<T>(type, this.definition.name, this as DataTypes[T]);
-  }
-}
-
-export interface WithHandlerClassType<T extends typeof Components[number]> {
-  customId: string;
-  handle?(interaction: InteractionTypes[T]): Promise<void>;
 }
 
 export const InteractionBases = {
@@ -76,4 +59,42 @@ export interface Ctor<T extends keyof InteractionTypes> {
   new (
     ...args: ConstructorParameters<typeof InteractionBases[T]>
   ): DataTypes[T];
+}
+
+export function isT<T extends keyof InteractionTypes>(
+  type: T,
+  target: unknown
+): target is InstanceType<typeof InteractionBases[T]> {
+  switch (type) {
+    case 'BUTTON':
+      return target instanceof InteractionBases['BUTTON'];
+    case 'SELECT_MENU':
+      return target instanceof InteractionBases['SELECT_MENU'];
+    case 'MODAL':
+      return target instanceof InteractionBases['MODAL'];
+  }
+  const arg = target as { definition?: { type?: string } };
+  if (arg.definition) {
+    return type === arg.definition.type ?? 'CHAT_INPUT';
+  }
+  return false;
+}
+
+export function CallIfMatches(
+  target: DataType<keyof InteractionTypes>,
+  interaction: Interaction<'cached'>
+) {
+  if (interaction.isCommand() && isT('CHAT_INPUT', target)) {
+    return target.handle(interaction);
+  } else if (interaction.isMessageContextMenu() && isT('MESSAGE', target)) {
+    return target.handle(interaction);
+  } else if (interaction.isUserContextMenu() && isT('USER', target)) {
+    return target.handle(interaction);
+  } else if (interaction.isButton() && isT('BUTTON', target)) {
+    return target.handle?.(interaction);
+  } else if (interaction.isSelectMenu() && isT('SELECT_MENU', target)) {
+    return target.handle?.(interaction);
+  } else if (interaction.isModalSubmit() && isT('MODAL', target)) {
+    return target.handle?.(interaction);
+  }
 }

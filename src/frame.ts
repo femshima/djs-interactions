@@ -1,6 +1,7 @@
 import { Client, GuildResolvable, Interaction } from 'discord.js';
 import {
   ApplicationCommandBase,
+  CallIfMatches,
   Commands,
   Components,
   Ctor,
@@ -9,63 +10,50 @@ import {
   InteractionTypes,
   isCommand,
   isComponent,
-  register,
+  isT,
   WithHandlerClassType,
 } from './bases';
-import crypto from 'crypto';
 import { DataStore, DefaultDataStore } from './store';
 
 export default class InteractionFrame {
-  store: DataStore<keyof InteractionTypes, string, DataTypes>;
+  store: DataStore<string, DataTypes[keyof InteractionTypes]>;
   constructor(options?: {
-    store: DataStore<keyof InteractionTypes, string, DataTypes>;
+    store: DataStore<string, DataTypes[keyof InteractionTypes]>;
   }) {
     this.store =
       options?.store ??
-      new DefaultDataStore<keyof InteractionTypes, string, DataTypes>();
+      new DefaultDataStore<DataTypes[keyof InteractionTypes]>();
   }
   async interactionCreate(interaction: Interaction) {
     if (!interaction.inCachedGuild()) return;
 
-    if (interaction.isCommand())
-      await this.store
-        .get('CHAT_INPUT', interaction.commandName)
-        ?.handle(interaction);
-    else if (interaction.isMessageContextMenu())
-      await this.store
-        .get('MESSAGE', interaction.commandName)
-        ?.handle(interaction);
-    else if (interaction.isUserContextMenu())
-      await this.store
-        .get('USER', interaction.commandName)
-        ?.handle(interaction);
-
-    if (interaction.isButton())
-      await this.store
-        .get('BUTTON', interaction.customId)
-        ?.handle?.(interaction);
-    else if (interaction.isSelectMenu())
-      await this.store
-        .get('SELECT_MENU', interaction.customId)
-        ?.handle?.(interaction);
-    else if (interaction.isModalSubmit())
-      await this.store
-        .get('MODAL', interaction.customId)
-        ?.handle?.(interaction);
+    const i = interaction as Interaction & {
+      commandName?: string;
+      customId?: string;
+    };
+    const key = i.commandName || i.customId;
+    if (!key) return;
+    const value = await this.store.get(key);
+    if (!value) return;
+    await CallIfMatches(value, interaction);
   }
   async registerCommand(
     client: Client<true>,
     commands: ApplicationCommandBase<typeof Commands[number]>[],
     guilds?: GuildResolvable[]
   ) {
-    commands.forEach((command) => {
-      command[register](this.store);
-    });
+    await Promise.all(
+      commands.map((command) => {
+        return this.store.set(command.definition.name, command);
+      })
+    );
 
-    const defs = this.store
-      .map((_k1, _k2, command) =>
-        'definition' in command ? command.definition : undefined
-      )
+    const defs = (await this.store.values())
+      .map((v) => {
+        if (isT('CHAT_INPUT', v) || isT('MESSAGE', v) || isT('USER', v)) {
+          return v.definition;
+        }
+      })
       .filter(
         (v): v is Exclude<typeof v, undefined> => typeof v !== 'undefined'
       );
@@ -101,8 +89,8 @@ export default class InteractionFrame {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       constructor(...args: any[]) {
         super(...args);
-        this.customId = crypto.randomUUID() + (this.customId ?? '');
-        store.set(base, this.customId, this as DataTypes[T]);
+        this.customId = store.getUniqueKey();
+        store.set(this.customId, this as DataTypes[T]);
       }
       async handle?(interaction: InteractionTypes[T]): Promise<void>;
     };
