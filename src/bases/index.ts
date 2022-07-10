@@ -75,7 +75,7 @@ export function isT<T extends keyof InteractionTypes>(
   }
   const arg = target as { definition?: { type?: string } };
   if (arg.definition) {
-    return type === arg.definition.type ?? 'CHAT_INPUT';
+    return type === (arg.definition.type ?? 'CHAT_INPUT');
   }
   return false;
 }
