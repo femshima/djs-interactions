@@ -1,80 +1,31 @@
-# ts-node-template
+# djs-interactions
 
-Template Repository for TypeScript + Node.js Application
+discord.jsには各種のInteractionがありますが、
+それらの定義とハンドラを近い位置に書けるようにすることで
+使いやすくするフレームワーク的何かです。
 
-## Setup
+## 使い方
 
-```sh
-# リポジトリ作成時
-npm init -y
-# 以降
-npm i
-```
+詳しい使い方は`sample/`を見てください。
+基本的には`interactionFrame.Base(<Interactionの種類>)`で得られるクラスを継承して使います。
+`<Interactionの種類>`に使えるものは次の通りです。
 
-## Git Hooks
+| Interactionの種類 | 説明 |
+| -- | -- |
+| `'CHAT_INPUT'` | スラッシュコマンド |
+| `'MESSAGE'` | メッセージのContext Menu |
+| `'USER'` | ユーザーのContext Menu |
+| `'BUTTON'` | ボタン |
+| `'SELECT_MENU'` | セレクトメニュー |
+| `'MODAL'` | モーダルウィンドウ |
 
-以下のコマンドが`git commit`時に自動で実行される．
+### 最初に定義し登録するもの(上三つ)
 
-```sh
-npm run check  # 静的型チェック
-npm run format # コード整形
-```
+`ApplicationCommandData`(スラッシュコマンドとContext Menu)がこれにあたります。
+開始時にまとめてインスタンス化(new)して、`registerCommand`で登録します。
 
-以下のコマンドが`git push`時に自動で実行される．
-```sh
-npm test       # 単体テストチェック
-```
+### 実行中、都度定義して使用するもの(下三つ)
 
-いずれかがエラーを吐くと`git commit/push`できないので注意．
-
-## Scripts
-
-主に使うのは太字の2つ．
-
-* `npm run build`
-  * `tsc`
-  * `src/**/*.ts`をもとに`dist/**/*.js`を生成する
-  * 本番環境用
-* `npm run check`
-  * `tsc --noEmit`
-  * `src/**/*.ts`の静的型エラーがないか確認する
-  * `dist/**/*.js`を生成しない
-  * `git commit`時の自動実行その1
-* `npm run dev`
-  * `ts-node src/index.ts`
-  * `dist/**/*.js`を生成せずに直接実行する
-* **`npm run dev:watch`**
-  * `ts-node-dev src/index.ts`
-  * `dist/**/*.js`を生成せずに直接実行する
-  * `src/**/*.ts`に変更があったときに自動で再起動する
-* `npm run lint-staged`
-  * `lint-staged`
-  * ワークスペース内のコード等を整形する
-  * `git commit`時の自動実行その2
-* `npm run prepare`
-  * `husky install`
-  * `npm install`時に自動実行される；それ以外では実行しなくてよい
-* `npm start`
-  * `node dist/index.js`
-  * コンパイルされた.jsを実行する
-  * 本番環境用
-* **`npm test`**
-  * `jest`
-  * `src/**/*.test.ts`にあるテストを実行する
-  * `git push`時の自動実行
-
-# Deploy
-
-* `docker-compose.yml`
-```yml
-services:
-  [name]:
-    env_file: ./[path].env
-    build: ./[path]
-```
-
-* `docker` command
-```sh
-docker build . -t [name]
-docker run -d [name]
-```
+ボタン、セレクトメニュー、モーダルウィンドウがこれにあたります。
+`interactionFrame.Base(<Interactionの種類>)`を継承したクラスを定義しておき、使いたい場所でnewしてdiscord.jsに渡します(この継承元クラスはさらにMessageButtonなどdiscord.jsのクラスを継承しているので、そのまま渡すことができます)。
+newしたタイミングで自動的にハンドラが登録され、イベントが発生すると該当のハンドラだけが呼び出されます。
