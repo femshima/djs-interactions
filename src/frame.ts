@@ -1,90 +1,75 @@
 import { Client, GuildResolvable, Interaction } from 'discord.js';
 import {
-  ApplicationCommandInteractionType,
   ApplicationCommandBase,
-  ComponentBases,
-  ComponentTypes,
+  Commands,
+  Components,
+  Ctor,
+  DataTypes,
+  InteractionBases,
+  InteractionTypes,
+  isCommand,
+  isComponent,
+  register,
   WithHandlerClassType,
 } from './bases';
 import crypto from 'crypto';
 import { DataStore, DefaultDataStore } from './store';
 
 export default class InteractionFrame {
-  private commands: DataStore<
-    keyof ApplicationCommandInteractionType,
-    string,
-    ApplicationCommandBase<keyof ApplicationCommandInteractionType>
-  >;
-  private components: DataStore<
-    keyof ComponentTypes,
-    string,
-    WithHandlerClassType<keyof ComponentTypes>
-  >;
+  store: DataStore<keyof InteractionTypes, string, DataTypes>;
   constructor(options?: {
-    commands?: DataStore<
-      keyof ApplicationCommandInteractionType,
-      string,
-      ApplicationCommandBase<keyof ApplicationCommandInteractionType>
-    >;
-    components?: DataStore<
-      keyof ComponentTypes,
-      string,
-      WithHandlerClassType<keyof ComponentTypes>
-    >;
+    store: DataStore<keyof InteractionTypes, string, DataTypes>;
   }) {
-    this.commands = options?.commands ?? new DefaultDataStore();
-    this.components = options?.components ?? new DefaultDataStore();
+    this.store =
+      options?.store ??
+      new DefaultDataStore<keyof InteractionTypes, string, DataTypes>();
   }
   async interactionCreate(interaction: Interaction) {
     if (!interaction.inCachedGuild()) return;
 
-    const callCommandHandler = <
-      T extends keyof ApplicationCommandInteractionType
-    >(
-      type: T,
-      interaction: ApplicationCommandInteractionType[T]
-    ) => {
-      const command = this.commands.get(type, interaction.commandName);
-      if (!command?.handle) return;
-      return command.handle(interaction);
-    };
-
-    const callComponentHandler = <T extends keyof ComponentTypes>(
-      type: T,
-      interaction: ComponentTypes[T]['interaction']
-    ) => {
-      if (!interaction.customId) return;
-      const component = this.components.get(type, interaction.customId);
-      if (!component?.handle) return;
-      return component.handle(interaction);
-    };
-
     if (interaction.isCommand())
-      await callCommandHandler('CHAT_INPUT', interaction);
+      await this.store
+        .get('CHAT_INPUT', interaction.commandName)
+        ?.handle(interaction);
     else if (interaction.isMessageContextMenu())
-      await callCommandHandler('MESSAGE', interaction);
+      await this.store
+        .get('MESSAGE', interaction.commandName)
+        ?.handle(interaction);
     else if (interaction.isUserContextMenu())
-      await callCommandHandler('USER', interaction);
+      await this.store
+        .get('USER', interaction.commandName)
+        ?.handle(interaction);
 
     if (interaction.isButton())
-      await callComponentHandler('BUTTON', interaction);
+      await this.store
+        .get('BUTTON', interaction.customId)
+        ?.handle?.(interaction);
     else if (interaction.isSelectMenu())
-      await callComponentHandler('SELECT_MENU', interaction);
+      await this.store
+        .get('SELECT_MENU', interaction.customId)
+        ?.handle?.(interaction);
     else if (interaction.isModalSubmit())
-      await callComponentHandler('MODAL', interaction);
+      await this.store
+        .get('MODAL', interaction.customId)
+        ?.handle?.(interaction);
   }
   async registerCommand(
     client: Client<true>,
-    commands: ApplicationCommandBase<keyof ApplicationCommandInteractionType>[],
+    commands: ApplicationCommandBase<typeof Commands[number]>[],
     guilds?: GuildResolvable[]
   ) {
     commands.forEach((command) => {
-      const def = command.definition;
-      const type = def.type ?? 'CHAT_INPUT';
-      this.commands.set(type, def.name, command);
+      command[register](this.store);
     });
 
-    const defs = this.commands.map((_k1, _k2, command) => command.definition);
+    const defs = this.store
+      .map((_k1, _k2, command) =>
+        'definition' in command ? command.definition : undefined
+      )
+      .filter(
+        (v): v is Exclude<typeof v, undefined> => typeof v !== 'undefined'
+      );
+
     if (guilds) {
       for (const guild of guilds) {
         const guildId = client.guilds.resolveId(guild);
@@ -95,10 +80,21 @@ export default class InteractionFrame {
       await client.application?.commands.set(defs);
     }
   }
-  baseComponent<T extends keyof ComponentTypes>(base: T) {
-    const components = this.components;
-    class WithHandler
-      extends ComponentBases[base].base
+
+  Base<T extends typeof Commands[number]>(base: T): Ctor<T>;
+  Base<T extends typeof Components[number]>(base: T): Ctor<T>;
+  Base<T extends keyof InteractionTypes>(base: T) {
+    if (isCommand(base)) {
+      return InteractionBases[base];
+    } else if (isComponent(base)) {
+      return this.ComponentBase(base);
+    }
+  }
+
+  private ComponentBase<T extends typeof Components[number]>(base: T) {
+    const store = this.store;
+    return class WithHandler
+      extends InteractionBases[base]
       implements WithHandlerClassType<T>
     {
       customId = '';
@@ -106,16 +102,9 @@ export default class InteractionFrame {
       constructor(...args: any[]) {
         super(...args);
         this.customId = crypto.randomUUID() + (this.customId ?? '');
-        components.set(base, this.customId, this);
+        store.set(base, this.customId, this as DataTypes[T]);
       }
-      async handle?(
-        interaction: ComponentTypes[T]['interaction']
-      ): Promise<void>;
-    }
-    return WithHandler as {
-      new (
-        ...args: ConstructorParameters<ComponentTypes[T]['base']>
-      ): WithHandler & InstanceType<ComponentTypes[T]['base']>;
+      async handle?(interaction: InteractionTypes[T]): Promise<void>;
     };
   }
 }

@@ -2,7 +2,7 @@ import { ButtonInteraction } from 'discord.js';
 import { MessageButtonStyles } from 'discord.js/typings/enums';
 import { interactionFrame } from '../interaction';
 
-export default class More extends interactionFrame.baseComponent('BUTTON') {
+export default class More extends interactionFrame.Base('BUTTON') {
   constructor(private message: string) {
     super({
       customId: 'more',

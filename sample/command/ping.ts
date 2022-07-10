@@ -1,8 +1,8 @@
 import { CommandInteraction } from 'discord.js';
-import { ApplicationCommandBase } from '../../src';
 import { More } from '../component';
+import { interactionFrame } from '../interaction';
 
-export default class Ping extends ApplicationCommandBase {
+export default class Ping extends interactionFrame.Base('CHAT_INPUT') {
   definition = {
     name: 'ping',
     description: 'Ping!',
