@@ -1,5 +1,5 @@
 export { DelayedDataStore } from './delay';
-export { DataStoreAdapter } from './adapter';
+export { DataStoreAdapter, StorageObject } from './adapter';
 
 export interface DataStore<K, V> {
   getUniqueKey(): K;

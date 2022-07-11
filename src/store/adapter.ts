@@ -1,36 +1,37 @@
 import { Collection } from 'discord.js';
 import { DataStore } from '.';
 
-interface CtorType {
-  new (...args: unknown[]): object;
+interface CtorType<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  new (...a: any[]): T;
 }
 
-interface Definition<T extends CtorType, U> {
+interface Definition<T extends object, U> {
   key: string;
-  ctor: T;
-  serialize(from: InstanceType<T>): U;
-  deserialize(to: U): InstanceType<T>;
+  ctor: CtorType<T>;
+  serialize(from: T): U;
+  deserialize(to: U): T;
 }
 
-interface StorageObject {
+export interface StorageObject<D> {
   type: string;
+  data: D;
 }
 
 export class DataStoreAdapter<
   K,
-  Ctor extends CtorType,
-  V2 extends StorageObject
-> implements DataStore<K, InstanceType<Ctor>>
+  D1 extends object,
+  D extends object,
+  Store extends DataStore<K, StorageObject<D>>
+> implements DataStore<K, D1>
 {
-  definitions: Collection<string, Definition<Ctor, V2>> = new Collection();
-  constructor(public store: DataStore<K, V2>) {}
+  definitions: Collection<string, Definition<D1, D>> = new Collection();
+  constructor(public store: Store) {}
   getUniqueKey() {
     return this.store.getUniqueKey();
   }
-  set(key: K, value: InstanceType<Ctor>) {
-    const serialized = this.definitions
-      .find((o) => value instanceof o.ctor)
-      ?.serialize(value);
+  set(key: K, value: D1) {
+    const serialized = this.serlialize(value);
 
     if (!serialized) throw new Error(`Unknown instance: ${value}`);
 
@@ -57,11 +58,16 @@ export class DataStoreAdapter<
           typeof arg[1] !== 'undefined'
       );
   }
-  register<T extends Ctor>(def: Definition<T, V2>) {
+  register<T extends D1>(def: Definition<T, D>) {
     this.definitions.set(def.key, def);
   }
-  private deserialize(value?: V2) {
+  private serlialize(value: D1) {
+    const def = this.definitions.find((o) => value instanceof o.ctor);
+    if (!def) return undefined;
+    return { type: def.key, data: def.serialize(value) };
+  }
+  private deserialize(value?: StorageObject<D>) {
     if (!value?.type) return undefined;
-    return this.definitions.get(value.type)?.deserialize(value);
+    return this.definitions.get(value.type)?.deserialize(value.data);
   }
 }

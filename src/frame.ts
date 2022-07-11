@@ -15,14 +15,15 @@ import {
 } from './bases';
 import { DataStore, DefaultDataStore } from './store';
 
-export default class InteractionFrame {
-  store: DataStore<string, DataTypes[keyof InteractionTypes]>;
-  constructor(options?: {
-    store: DataStore<string, DataTypes[keyof InteractionTypes]>;
-  }) {
-    this.store =
-      options?.store ??
-      new DefaultDataStore<DataTypes[keyof InteractionTypes]>();
+export default class InteractionFrame<
+  T extends DataStore<
+    string,
+    DataTypes[keyof InteractionTypes]
+  > = DefaultDataStore<DataTypes[keyof InteractionTypes]>
+> {
+  store: T;
+  constructor(options: { store: T }) {
+    this.store = options?.store;
   }
   async interactionCreate(interaction: Interaction) {
     if (!interaction.inCachedGuild()) return;
