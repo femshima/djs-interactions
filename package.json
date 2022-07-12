@@ -7,7 +7,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -d",
     "check": "tsc --noEmit",
     "dev": "ts-node sample/index.ts",
     "dev:watch": "ts-node-dev sample/index.ts",
