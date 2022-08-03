@@ -1,19 +1,22 @@
-import { ModalSubmitInteraction } from 'discord.js';
+import {
+  ComponentType,
+  ModalSubmitInteraction,
+  TextInputStyle,
+} from 'discord.js';
 import { Modal } from '../../src';
 
 export default class MyModal extends Modal {
   constructor() {
     super({
-      customId: 'modal',
       title: 'Sample Modal',
       components: [
         {
-          type: 'ACTION_ROW',
+          type: ComponentType.ActionRow,
           components: [
             {
-              type: 'TEXT_INPUT',
-              customId: 'text',
-              style: 'SHORT',
+              type: ComponentType.TextInput,
+              custom_id: 'text',
+              style: TextInputStyle.Short,
               label: 'TXT',
             },
           ],

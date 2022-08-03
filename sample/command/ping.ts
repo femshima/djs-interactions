@@ -1,6 +1,7 @@
-import { CommandInteraction } from 'discord.js';
+import { CommandInteraction, ComponentType } from 'discord.js';
 import { Command } from '../../src';
 import { More } from '../component';
+import Link from '../component/link';
 
 export default class Ping extends Command {
   definition = {
@@ -13,8 +14,8 @@ export default class Ping extends Command {
       content: 'Pong!',
       components: [
         {
-          type: 'ACTION_ROW',
-          components: [new More('Hello!')],
+          type: ComponentType.ActionRow,
+          components: [new More('Hello!'), new Link()],
         },
       ],
     });

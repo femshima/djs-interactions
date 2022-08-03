@@ -1,13 +1,11 @@
-import { ButtonInteraction } from 'discord.js';
-import { MessageButtonStyles } from 'discord.js/typings/enums';
+import { ButtonInteraction, ButtonStyle } from 'discord.js';
 import { Button } from '../../src';
 
 export default class More extends Button {
   constructor(private message: string) {
     super({
-      customId: 'more',
       label: 'More!',
-      style: MessageButtonStyles.PRIMARY,
+      style: ButtonStyle.Primary,
     });
   }
   async handle(interaction: ButtonInteraction<'cached'>) {

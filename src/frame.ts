@@ -1,10 +1,18 @@
-import { Client, GuildResolvable, Interaction } from 'discord.js';
+import {
+  Client,
+  ComponentBuilder,
+  GuildResolvable,
+  Interaction,
+} from 'discord.js';
 import {
   ApplicationCommandBase,
   CallIfMatches,
   Commands,
+  ComponentDataType,
+  ComponentParamType,
   Components,
   Ctor,
+  DataParser,
   DataTypes,
   InteractionBases,
   InteractionTypes,
@@ -89,18 +97,24 @@ export default class InteractionFrame<
 
   private ComponentBase<T extends typeof Components[number]>(base: T) {
     const store = this.store;
-    return class WithHandler
-      extends InteractionBases[base]
-      implements WithHandlerClassType<T>
-    {
-      customId = '';
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      constructor(...args: any[]) {
-        super(...args);
-        this.customId = store.getUniqueKey();
-        store.set(this.customId, this as DataTypes[T]);
+    class WithHandler implements WithHandlerClassType<T> {
+      readonly type = base;
+      data: ComponentDataType[T];
+      constructor(data: ComponentParamType<T>) {
+        this.data = DataParser[base](data, store.getUniqueKey());
+        if ('custom_id' in this.data) {
+          // unsafe typescript: The `type` property's type does not match somehow...
+          store.set(this.data.custom_id, this as unknown as DataTypes[T]);
+        }
       }
       async handle?(interaction: InteractionTypes[T]): Promise<void>;
-    };
+      toJSON() {
+        return this.data;
+      }
+    }
+    // this is necessary for discord.js to treat WithHandler as ComponentBuilder,
+    // urging it to call toJSON().
+    Object.setPrototypeOf(WithHandler.prototype, ComponentBuilder.prototype);
+    return WithHandler;
   }
 }

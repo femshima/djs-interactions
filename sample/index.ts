@@ -1,4 +1,4 @@
-import { Client, Intents } from 'discord.js';
+import { Client, GatewayIntentBits } from 'discord.js';
 import env from './env';
 import * as Command from './command';
 import { frame } from '../src';
@@ -6,7 +6,7 @@ import { frame } from '../src';
 const { BOT_TOKEN } = env;
 
 const client = new Client({
-  intents: [Intents.FLAGS.GUILDS],
+  intents: [GatewayIntentBits.Guilds],
 });
 
 client.on('interactionCreate', (interaction) =>
