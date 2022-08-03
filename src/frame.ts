@@ -5,7 +5,7 @@ import {
   Interaction,
 } from 'discord.js';
 import {
-  ApplicationCommandBase,
+  ApplicationCommandBases,
   CallIfMatches,
   Commands,
   ComponentDataType,
@@ -49,7 +49,7 @@ export default class InteractionFrame<
 
   async registerCommand(options: {
     client: Client<true>;
-    commands: ApplicationCommandBase<typeof Commands[number]>[];
+    commands: ApplicationCommandBases[];
     guilds?: boolean | GuildResolvable[];
   }) {
     const { client, commands } = options;

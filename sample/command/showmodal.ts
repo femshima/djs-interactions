@@ -2,7 +2,7 @@ import { CommandInteraction } from 'discord.js';
 import { Command } from '../../src';
 import { MyModal } from '../component';
 
-export default class Ping extends Command {
+export default class ShowModal extends Command {
   definition = {
     name: 'showmodal',
     description: 'Shows Modal',
