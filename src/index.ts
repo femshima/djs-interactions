@@ -7,6 +7,8 @@ export {
   DelayedDataStore,
   StorageObject,
 } from './store';
+export { SubCommandGroupDefinition } from './bases';
+export { default as AbortError } from './error/AbortError';
 export { default as InteractionFrame } from './frame';
 export * from './init';
 

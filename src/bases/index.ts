@@ -7,6 +7,7 @@ import {
   MessageContextMenuCommandInteraction,
   UserContextMenuCommandInteraction,
 } from 'discord.js';
+import AbortError from '../error/AbortError';
 import {
   ApplicationCommandBase,
   Commands,
@@ -17,9 +18,11 @@ import {
   Components,
   WithHandlerClassType,
 } from './Components';
+import { SubCommand, SubCommandGroup } from './SubCommand';
 
 export * from './ApplicationCommand';
 export * from './Components';
+export * from './SubCommand';
 
 export interface InteractionTypes {
   CHAT_INPUT: CommandInteraction<'cached'>;
@@ -60,19 +63,59 @@ export function isT<T extends keyof InteractionTypes>(
   return type === (arg.type ?? 'CHAT_INPUT');
 }
 
-export function CallIfMatches(
+export async function CallIfMatches(
   target: DataType<keyof InteractionTypes>,
   interaction: Interaction<'cached'>
 ) {
   if (interaction.isChatInputCommand() && isT('CHAT_INPUT', target)) {
-    return target.handle(interaction);
+    try {
+      await target.handle?.(interaction);
+      const handlers = target.definition.options
+        ?.map((o) => {
+          if (
+            o instanceof SubCommand &&
+            o.definition.name === interaction.options.getSubcommand()
+          ) {
+            return o;
+          } else if (
+            o instanceof SubCommandGroup &&
+            o.definition.name === interaction.options.getSubcommandGroup()
+          ) {
+            const subcommands = o.definition.options?.filter(
+              (o): o is SubCommand => {
+                if (o instanceof SubCommand)
+                  return (
+                    o.definition.name === interaction.options.getSubcommand()
+                  );
+                return false;
+              }
+            );
+            return [o, ...(subcommands ?? [])];
+          }
+        })
+        .flat();
+      if (!handlers) return;
+      for (const subcommand of handlers) {
+        await subcommand?.handle?.(interaction);
+      }
+    } catch (e) {
+      if (e instanceof AbortError) {
+        return;
+      } else if (e instanceof Error) {
+        throw new Error('ChatInput interaction handler throwed an error.', {
+          cause: e,
+        });
+      } else {
+        throw e;
+      }
+    }
   } else if (
     interaction.isMessageContextMenuCommand() &&
     isT('MESSAGE', target)
   ) {
-    return target.handle(interaction);
+    return target.handle!(interaction);
   } else if (interaction.isUserContextMenuCommand() && isT('USER', target)) {
-    return target.handle(interaction);
+    return target.handle!(interaction);
   } else if (interaction.isButton() && isT('BUTTON', target)) {
     return target.handle?.(interaction);
   } else if (interaction.isSelectMenu() && isT('SELECT_MENU', target)) {

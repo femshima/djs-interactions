@@ -1,10 +1,12 @@
 import {
-  ChatInputApplicationCommandData,
   UserApplicationCommandData,
   MessageApplicationCommandData,
   ApplicationCommandType,
 } from 'discord.js';
-import { InteractionTypes } from '.';
+import {
+  InteractionTypes,
+  ChatInputApplicationCommandDataWithSubCommand,
+} from '.';
 
 export const Commands = ['CHAT_INPUT', 'MESSAGE', 'USER'] as const;
 export function isCommand(arg: unknown): arg is typeof Commands[number] {
@@ -12,7 +14,7 @@ export function isCommand(arg: unknown): arg is typeof Commands[number] {
 }
 
 interface Definition {
-  CHAT_INPUT: ChatInputApplicationCommandData;
+  CHAT_INPUT: ChatInputApplicationCommandDataWithSubCommand;
   MESSAGE: MessageApplicationCommandData;
   USER: UserApplicationCommandData;
 }
@@ -32,7 +34,8 @@ export abstract class ApplicationCommandBase<
     }
   }
   abstract definition: Definition[T];
-  abstract handle(interaction: InteractionTypes[T]): Promise<void>;
+  //TODO: restrict undefined handler to only commands with subcommands
+  handle?(interaction: InteractionTypes[T]): Promise<void>;
 }
 
 export const InteractionBases = {

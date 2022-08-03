@@ -1,4 +1,5 @@
 import {
+  ApplicationCommandData,
   Client,
   ComponentBuilder,
   GuildResolvable,
@@ -21,6 +22,7 @@ import {
   isT,
   WithHandlerClassType,
 } from './bases';
+import { SubCommand, SubCommandGroup } from './bases';
 import { DataStore, DefaultDataStore } from './store';
 
 export default class InteractionFrame<
@@ -64,9 +66,31 @@ export default class InteractionFrame<
       })
     );
 
-    const defs = (await this.store.values())
+    const defs: ApplicationCommandData[] = (await this.store.values())
       .map((v) => {
-        if (isT('CHAT_INPUT', v) || isT('MESSAGE', v) || isT('USER', v)) {
+        if (isT('CHAT_INPUT', v)) {
+          return {
+            ...v.definition,
+            options: v.definition.options?.map((d2) => {
+              if (d2 instanceof SubCommand) {
+                return d2.definition;
+              } else if (d2 instanceof SubCommandGroup) {
+                return {
+                  ...d2.definition,
+                  options: d2.definition.options?.map((d3) => {
+                    if (d3 instanceof SubCommand) {
+                      return d3.definition;
+                    } else {
+                      return d3;
+                    }
+                  }),
+                };
+              } else {
+                return d2;
+              }
+            }),
+          };
+        } else if (isT('MESSAGE', v) || isT('USER', v)) {
           return v.definition;
         }
       })

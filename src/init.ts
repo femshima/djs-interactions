@@ -1,4 +1,9 @@
-import { DataTypes, InteractionTypes } from './bases';
+import {
+  DataTypes,
+  InteractionTypes,
+  SubCommandGroup,
+  SubCommand,
+} from './bases';
 import InteractionFrame from './frame';
 import { DelayedDataStore } from './store';
 
@@ -14,3 +19,5 @@ export const UserContextMenu = frame.Base('USER');
 export const Button = frame.Base('BUTTON');
 export const SelectMenu = frame.Base('SELECT_MENU');
 export const Modal = frame.Base('MODAL');
+
+export { SubCommandGroup, SubCommand };
