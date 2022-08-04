@@ -8,21 +8,13 @@ import {
 import {
   ApplicationCommandBases,
   CallIfMatches,
-  Commands,
-  ComponentDataType,
-  ComponentParamType,
-  Components,
-  Ctor,
-  DataParser,
   DataTypes,
-  InteractionBases,
   InteractionTypes,
-  isCommand,
-  isComponent,
   isT,
-  WithHandlerClassType,
 } from './bases';
-import { SubCommand, SubCommandGroup } from './bases';
+import Button from './bases/Components/Button';
+import Modal from './bases/Components/Modal';
+import SelectMenu from './bases/Components/SelectMenu';
 import { DataStore, DefaultDataStore } from './store';
 
 export default class InteractionFrame<
@@ -69,27 +61,7 @@ export default class InteractionFrame<
     const defs: ApplicationCommandData[] = (await this.store.values())
       .map((v) => {
         if (isT('CHAT_INPUT', v)) {
-          return {
-            ...v.definition,
-            options: v.definition.options?.map((d2) => {
-              if (d2 instanceof SubCommand) {
-                return d2.definition;
-              } else if (d2 instanceof SubCommandGroup) {
-                return {
-                  ...d2.definition,
-                  options: d2.definition.options?.map((d3) => {
-                    if (d3 instanceof SubCommand) {
-                      return d3.definition;
-                    } else {
-                      return d3;
-                    }
-                  }),
-                };
-              } else {
-                return d2;
-              }
-            }),
-          };
+          return v.pureDefinition;
         } else if (isT('MESSAGE', v) || isT('USER', v)) {
           return v.definition;
         }
@@ -109,36 +81,20 @@ export default class InteractionFrame<
     }
   }
 
-  Base<T extends typeof Commands[number]>(base: T): Ctor<T>;
-  Base<T extends typeof Components[number]>(base: T): Ctor<T>;
-  Base<T extends keyof InteractionTypes>(base: T) {
-    if (isCommand(base)) {
-      return InteractionBases[base];
-    } else if (isComponent(base)) {
-      return this.ComponentBase(base);
-    }
-  }
-
-  private ComponentBase<T extends typeof Components[number]>(base: T) {
+  ComponentBase<T extends 'BUTTON' | 'SELECT_MENU' | 'MODAL'>(base: T) {
     const store = this.store;
-    class WithHandler implements WithHandlerClassType<T> {
-      readonly type = base;
-      data: ComponentDataType[T];
-      constructor(data: ComponentParamType<T>) {
-        this.data = DataParser[base](data, store.getUniqueKey());
-        if ('custom_id' in this.data) {
-          // unsafe typescript: The `type` property's type does not match somehow...
-          store.set(this.data.custom_id, this as unknown as DataTypes[T]);
-        }
-      }
-      async handle?(interaction: InteractionTypes[T]): Promise<void>;
-      toJSON() {
-        return this.data;
-      }
-    }
+    const Bases = {
+      BUTTON: Button,
+      SELECT_MENU: SelectMenu,
+      MODAL: Modal,
+    };
+    const Base = Bases[base];
+    Object.defineProperty(Base.prototype, 'store', {
+      get: () => store,
+    });
     // this is necessary for discord.js to treat WithHandler as ComponentBuilder,
     // urging it to call toJSON().
-    Object.setPrototypeOf(WithHandler.prototype, ComponentBuilder.prototype);
-    return WithHandler;
+    Object.setPrototypeOf(Base.prototype, ComponentBuilder.prototype);
+    return Base;
   }
 }

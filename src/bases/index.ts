@@ -8,20 +8,18 @@ import {
   UserContextMenuCommandInteraction,
 } from 'discord.js';
 import AbortError from '../error/AbortError';
-import {
-  ApplicationCommandBase,
-  Commands,
-  InteractionBases,
-} from './ApplicationCommand';
-import {
-  ComponentParamType,
-  Components,
-  WithHandlerClassType,
-} from './Components';
-import { SubCommand, SubCommandGroup } from './SubCommand';
+import ChatInputApplicationCommandBase from './Comamnds/ChatInput';
+import MessageApplicationCommandBase from './Comamnds/MessageContextMenu';
+import UserApplicationCommandBase from './Comamnds/UserContextMenu';
+import Button from './Components/Button';
+import Modal from './Components/Modal';
+import SelectMenu from './Components/SelectMenu';
 
-export * from './ApplicationCommand';
-export * from './Components';
+export {
+  ChatInputApplicationCommandBase,
+  MessageApplicationCommandBase,
+  UserApplicationCommandBase,
+};
 export * from './SubCommand';
 
 export interface InteractionTypes {
@@ -33,69 +31,36 @@ export interface InteractionTypes {
   MODAL: ModalSubmitInteraction<'cached'>;
 }
 
-type DataType<T extends keyof InteractionTypes> =
-  T extends typeof Commands[number]
-    ? ApplicationCommandBase<T>
-    : T extends typeof Components[number]
-    ? WithHandlerClassType<T>
-    : never;
-
-export type DataTypes = {
-  [k in keyof InteractionTypes]: DataType<k>;
-};
-
-type ConstructorParams<T extends keyof InteractionTypes> =
-  T extends typeof Commands[number]
-    ? ConstructorParameters<typeof InteractionBases[T]>
-    : T extends typeof Components[number]
-    ? [data: ComponentParamType<T>]
-    : never;
-
-export interface Ctor<T extends keyof InteractionTypes> {
-  new (...args: ConstructorParams<T>): DataTypes[T];
+export interface DataTypes {
+  CHAT_INPUT: ChatInputApplicationCommandBase;
+  MESSAGE: MessageApplicationCommandBase;
+  USER: UserApplicationCommandBase;
+  BUTTON: Button;
+  SELECT_MENU: SelectMenu;
+  MODAL: Modal;
 }
+
+export type ApplicationCommandBases =
+  | ChatInputApplicationCommandBase
+  | MessageApplicationCommandBase
+  | UserApplicationCommandBase;
 
 export function isT<T extends keyof InteractionTypes>(
   type: T,
   target: unknown
-): target is DataType<T> {
+): target is DataTypes[T] {
   const arg = target as { type?: string };
   return type === (arg.type ?? 'CHAT_INPUT');
 }
 
 export async function CallIfMatches(
-  target: DataType<keyof InteractionTypes>,
+  target: DataTypes[keyof InteractionTypes],
   interaction: Interaction<'cached'>
 ) {
   if (interaction.isChatInputCommand() && isT('CHAT_INPUT', target)) {
     try {
       await target.handle?.(interaction);
-      const handlers = target.definition.options
-        ?.map((o) => {
-          if (
-            o instanceof SubCommand &&
-            o.definition.name === interaction.options.getSubcommand()
-          ) {
-            return o;
-          } else if (
-            o instanceof SubCommandGroup &&
-            o.definition.name === interaction.options.getSubcommandGroup()
-          ) {
-            const subcommands = o.definition.options?.filter(
-              (o): o is SubCommand => {
-                if (o instanceof SubCommand)
-                  return (
-                    o.definition.name === interaction.options.getSubcommand()
-                  );
-                return false;
-              }
-            );
-            return [o, ...(subcommands ?? [])];
-          }
-        })
-        .flat();
-      if (!handlers) return;
-      for (const subcommand of handlers) {
+      for (const subcommand of target.subCommands) {
         await subcommand?.handle?.(interaction);
       }
     } catch (e) {
@@ -113,14 +78,14 @@ export async function CallIfMatches(
     interaction.isMessageContextMenuCommand() &&
     isT('MESSAGE', target)
   ) {
-    return target.handle!(interaction);
+    return target.handle(interaction);
   } else if (interaction.isUserContextMenuCommand() && isT('USER', target)) {
-    return target.handle!(interaction);
+    return target.handle(interaction);
   } else if (interaction.isButton() && isT('BUTTON', target)) {
     return target.handle?.(interaction);
   } else if (interaction.isSelectMenu() && isT('SELECT_MENU', target)) {
-    return target.handle?.(interaction);
+    return target.handle(interaction);
   } else if (interaction.isModalSubmit() && isT('MODAL', target)) {
-    return target.handle?.(interaction);
+    return target.handle(interaction);
   }
 }
