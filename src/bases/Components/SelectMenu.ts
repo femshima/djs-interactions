@@ -7,10 +7,10 @@ import InitializationError from '../../error/InitializationError';
 
 interface Store {
   getUniqueKey(): string;
-  set(key: string, value: SelectMenu<Store>): void;
+  set(key: string, value: SelectMenu): void;
 }
 
-export default abstract class SelectMenu<T extends Store = Store> {
+export default abstract class SelectMenu {
   readonly type = 'SELECT_MENU';
   data: APISelectMenuComponent;
   constructor(data: Omit<APISelectMenuComponent, 'type' | 'custom_id'>) {
@@ -24,7 +24,7 @@ export default abstract class SelectMenu<T extends Store = Store> {
   toJSON() {
     return this.data;
   }
-  get store(): T | undefined {
+  get store(): Store | undefined {
     return undefined;
   }
 }

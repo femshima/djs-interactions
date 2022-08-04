@@ -11,10 +11,10 @@ type DistributiveOmit<T, K extends string | number | symbol> = T extends unknown
 
 interface Store {
   getUniqueKey(): string;
-  set(key: string, value: Button<Store>): void;
+  set(key: string, value: Button): void;
 }
 
-export default abstract class Button<T extends Store = Store> {
+export default abstract class Button {
   readonly type = 'BUTTON';
   data: APIButtonComponent;
   constructor(
@@ -36,7 +36,7 @@ export default abstract class Button<T extends Store = Store> {
   toJSON() {
     return this.data;
   }
-  get store(): T | undefined {
+  get store(): Store | undefined {
     return undefined;
   }
 }

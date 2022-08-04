@@ -7,10 +7,10 @@ import InitializationError from '../../error/InitializationError';
 
 interface Store {
   getUniqueKey(): string;
-  set(key: string, value: Modal<Store>): void;
+  set(key: string, value: Modal): void;
 }
 
-export default abstract class Modal<T extends Store = Store> {
+export default abstract class Modal {
   readonly type = 'MODAL';
   data: APIModalInteractionResponseCallbackData;
   constructor(
@@ -26,7 +26,7 @@ export default abstract class Modal<T extends Store = Store> {
   toJSON() {
     return this.data;
   }
-  get store(): T | undefined {
+  get store(): Store | undefined {
     return undefined;
   }
 }
